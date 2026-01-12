@@ -5,16 +5,17 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useUpload } from "@/context/UploadContext";
 
-const MAX_FILE_SIZE = 70 * 1024 * 1024; // 70MB
+const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB - direct upload supports larger files
 
 export default function UploadModal() {
-    const { isUploadOpen, closeUpload } = useUpload();
+    const { isUploadOpen, closeUpload, triggerUploadComplete } = useUpload();
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [file, setFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadStatus, setUploadStatus] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
 
@@ -27,7 +28,7 @@ export default function UploadModal() {
 
     const validateAndSetFile = (selectedFile: File) => {
         if (selectedFile.size > MAX_FILE_SIZE) {
-            setError("File size exceeds 70MB limit");
+            setError("File size exceeds 500MB limit");
             setFile(null);
             return;
         }
@@ -58,32 +59,65 @@ export default function UploadModal() {
         setUploadProgress(0);
 
         try {
+            // Step 1: Get signed upload credentials
+            setUploadStatus("Preparing upload...");
+            const signatureRes = await axios.get("/api/cloudinary-signature");
+            const { signature, timestamp, cloudName, apiKey, folder } = signatureRes.data;
+
+            // Step 2: Upload directly to Cloudinary
+            setUploadStatus("Uploading to cloud...");
             const formData = new FormData();
             formData.append("file", file);
-            formData.append("title", title);
-            formData.append("description", description);
-            formData.append("originalSize", String(file.size));
+            formData.append("signature", signature);
+            formData.append("timestamp", String(timestamp));
+            formData.append("api_key", apiKey);
+            formData.append("folder", folder);
+            formData.append("resource_type", "video");
 
-            await axios.post("/api/video-upload", formData, {
-                headers: { "Content-Type": "multipart/form-data" },
-                onUploadProgress: (progressEvent) => {
-                    const progress = progressEvent.total
-                        ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
-                        : 0;
-                    setUploadProgress(progress);
-                },
+            const cloudinaryRes = await axios.post(
+                `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`,
+                formData,
+                {
+                    onUploadProgress: (progressEvent) => {
+                        const progress = progressEvent.total
+                            ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+                            : 0;
+                        setUploadProgress(progress);
+                    },
+                }
+            );
+
+            const { public_id, bytes, duration } = cloudinaryRes.data;
+
+            // Step 3: Save metadata to database
+            setUploadStatus("Saving to library...");
+            await axios.post("/api/save-video", {
+                title,
+                description,
+                publicId: public_id,
+                originalSize: file.size,
+                compressedSize: bytes,
+                duration: duration || 0,
             });
 
+            // Success
             closeUpload();
             setTitle("");
             setDescription("");
             setFile(null);
+            setUploadStatus("");
+            triggerUploadComplete();
             router.refresh();
+
         } catch (err) {
             console.error("Upload error:", err);
-            setError(axios.isAxiosError(err) ? err.response?.data?.error || "Upload failed" : "An error occurred");
+            setError(axios.isAxiosError(err)
+                ? err.response?.data?.error || "Upload failed"
+                : "An error occurred during upload"
+            );
         } finally {
             setIsUploading(false);
+            setUploadStatus("");
         }
     };
 
@@ -130,7 +164,7 @@ export default function UploadModal() {
                                     <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                                 </div>
                                 <p className="text-sm font-medium text-gray-300">Click to upload or drag and drop</p>
-                                <p className="text-xs text-gray-500 mt-1">MP4, WebM, MOV up to 70MB</p>
+                                <p className="text-xs text-gray-500 mt-1">MP4, WebM, MOV up to 500MB</p>
                             </div>
                         )}
                     </div>
@@ -165,11 +199,17 @@ export default function UploadModal() {
                     )}
 
                     {isUploading && (
-                        <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
-                            <div
-                                className="bg-white h-full transition-all duration-300"
-                                style={{ width: `${uploadProgress}%` }}
-                            ></div>
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-xs text-gray-400">
+                                <span>{uploadStatus}</span>
+                                <span>{uploadProgress}%</span>
+                            </div>
+                            <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden">
+                                <div
+                                    className="bg-gradient-to-r from-purple-500 to-blue-500 h-full transition-all duration-300"
+                                    style={{ width: `${uploadProgress}%` }}
+                                ></div>
+                            </div>
                         </div>
                     )}
 

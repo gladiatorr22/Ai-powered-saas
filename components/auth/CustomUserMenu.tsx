@@ -56,9 +56,9 @@ export default function CustomUserMenu() {
                     </div>
 
                     <div className="flex flex-col">
-                        {pathname !== "/home" && (
+                        {pathname !== "/dashboard" && (
                             <Link
-                                href="/home"
+                                href="/dashboard"
                                 className="px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2"
                                 onClick={() => setIsOpen(false)}
                             >

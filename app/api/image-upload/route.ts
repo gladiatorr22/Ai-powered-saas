@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { v2 as cloudinary } from "cloudinary";
+import { cloudinary } from "@/lib/cloudinary";
 
 // Interface for Cloudinary upload result
 interface CloudinaryUploadResult {
     public_id: string;
+    format?: string;
+    width?: number;
+    height?: number;
     [key: string]: unknown;
 }
 
@@ -18,30 +21,30 @@ export async function POST(request: NextRequest) {
         }
 
         // 2. Validate Cloudinary credentials
-        const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-        const apiKey = process.env.CLOUDINARY_API_KEY;
-        const apiSecret = process.env.CLOUDINARY_API_SECRET;
-
-        if (!cloudName || !apiKey || !apiSecret) {
+        if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
             return NextResponse.json(
                 { error: "Cloudinary credentials not configured" },
                 { status: 500 }
             );
         }
 
-        // Configure Cloudinary
-        cloudinary.config({
-            cloud_name: cloudName,
-            api_key: apiKey,
-            api_secret: apiSecret,
-        });
-
         // 3. Parse FormData
-        const formData = await request.formData();
+        let formData;
+        try {
+            formData = await request.formData();
+        } catch {
+            return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
+        }
+
         const file = formData.get("file") as File | null;
 
         if (!file) {
             return NextResponse.json({ error: "File is required" }, { status: 400 });
+        }
+
+        // Validate file type
+        if (!file.type.startsWith("image/")) {
+            return NextResponse.json({ error: "File must be an image" }, { status: 400 });
         }
 
         // 4. Convert file to buffer for upload
@@ -55,6 +58,7 @@ export async function POST(request: NextRequest) {
                     {
                         folder: "next-cloudinary-uploads",
                         resource_type: "image",
+                        upload_preset: process.env.CLOUDINARY_UPLOAD_PRESET,
                     },
                     (error, result) => {
                         if (error) {
@@ -70,9 +74,14 @@ export async function POST(request: NextRequest) {
             }
         );
 
-        // 6. Return the publicId
+        // 6. Return the upload result
         return NextResponse.json(
-            { publicId: uploadResult.public_id },
+            {
+                publicId: uploadResult.public_id,
+                format: uploadResult.format,
+                width: uploadResult.width,
+                height: uploadResult.height
+            },
             { status: 200 }
         );
     } catch (error) {

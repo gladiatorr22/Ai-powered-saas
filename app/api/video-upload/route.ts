@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { v2 as cloudinary } from "cloudinary";
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
+import { cloudinary } from "@/lib/cloudinary";
+import prisma from "@/lib/prisma";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+// Route segment config (App Router format)
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 // Interface for Cloudinary upload result
 interface CloudinaryUploadResult {
@@ -27,26 +26,21 @@ export async function POST(request: NextRequest) {
         }
 
         // 2. Validate Cloudinary credentials
-        const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-        const apiKey = process.env.CLOUDINARY_API_KEY;
-        const apiSecret = process.env.CLOUDINARY_API_SECRET;
-
-        if (!cloudName || !apiKey || !apiSecret) {
+        if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
             return NextResponse.json(
                 { error: "Cloudinary credentials not configured" },
                 { status: 500 }
             );
         }
 
-        // Configure Cloudinary
-        cloudinary.config({
-            cloud_name: cloudName,
-            api_key: apiKey,
-            api_secret: apiSecret,
-        });
-
         // 3. Parse FormData
-        const formData = await request.formData();
+        let formData;
+        try {
+            formData = await request.formData();
+        } catch {
+            return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
+        }
+
         const file = formData.get("file") as File | null;
         const title = formData.get("title") as string | null;
         const description = formData.get("description") as string | null;
@@ -56,8 +50,12 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "File is required" }, { status: 400 });
         }
 
-        if (!title) {
+        if (!title || title.trim().length === 0) {
             return NextResponse.json({ error: "Title is required" }, { status: 400 });
+        }
+
+        if (title.length > 200) {
+            return NextResponse.json({ error: "Title too long (max 200 chars)" }, { status: 400 });
         }
 
         if (!originalSize) {
@@ -65,6 +63,11 @@ export async function POST(request: NextRequest) {
                 { error: "Original size is required" },
                 { status: 400 }
             );
+        }
+
+        // Validate file type
+        if (!file.type.startsWith("video/")) {
+            return NextResponse.json({ error: "File must be a video" }, { status: 400 });
         }
 
         // 4. Convert file to buffer for upload
@@ -96,8 +99,8 @@ export async function POST(request: NextRequest) {
         // 6. Save video metadata to database via Prisma
         const video = await prisma.video.create({
             data: {
-                title,
-                description: description || "",
+                title: title.trim(),
+                description: description?.trim() || "",
                 publicId: uploadResult.public_id,
                 originalSize,
                 compressedSize: String(uploadResult.bytes),
@@ -114,7 +117,5 @@ export async function POST(request: NextRequest) {
             { error: "Failed to upload video" },
             { status: 500 }
         );
-    } finally {
-        await prisma.$disconnect();
     }
 }
