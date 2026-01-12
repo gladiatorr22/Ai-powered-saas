@@ -1,14 +1,8 @@
 import React from "react";
 import { auth } from "@clerk/nextjs/server";
-import { PrismaClient } from "@prisma/client";
+import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import VideoEditor from "@/components/video/VideoEditor";
-import { Pool } from "pg";
-import { PrismaPg } from "@prisma/adapter-pg";
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
 
 export default async function VideoPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;

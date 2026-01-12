@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { v2 as cloudinary } from "cloudinary";
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+import prisma from "@/lib/prisma";
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -116,7 +110,5 @@ export async function POST(request: NextRequest) {
     } catch (error) {
         console.error("Save copy error:", error);
         return NextResponse.json({ error: "Failed to save video" }, { status: 500 });
-    } finally {
-        await prisma.$disconnect();
     }
 }

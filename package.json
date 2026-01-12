@@ -11,8 +11,6 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.36.5",
-    "@prisma/adapter-pg": "^7.2.0",
-    "@prisma/client": "^7.2.0",
     "axios": "^1.13.2",
     "cloudinary": "^2.8.0",
     "dotenv": "^17.2.3",
@@ -25,6 +23,7 @@
     "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@prisma/client": "5.22.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "^20.19.27",
     "@types/pg": "^8.16.0",
@@ -34,7 +33,7 @@
     "daisyui": "^5.5.14",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
-    "prisma": "^7.2.0",
+    "prisma": "5.22.0",
     "tailwindcss": "^4.1.18",
     "typescript": "^5"
   }
