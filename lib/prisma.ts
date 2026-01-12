@@ -1,4 +1,5 @@
 //lib/prisma.ts - Prisma Singleton for connection pooling
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";

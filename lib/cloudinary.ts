@@ -1,5 +1,6 @@
 // lib/cloudinary.ts - Server-only Cloudinary SDK configuration
 // This file should ONLY be imported in API routes (server-side)
+import "dotenv/config";
 import "server-only";
 import { v2 as cloudinary } from "cloudinary";
 
