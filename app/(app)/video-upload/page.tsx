@@ -1,9 +1,15 @@
-import React from 'react'
+"use client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useUpload } from "@/context/UploadContext";
 
-function VideoUpload() {
-  return (
-    <div>VideoUpload</div>
-  )
+export default function VideoUploadPage() {
+  const { openUpload } = useUpload();
+  const router = useRouter();
+
+  useEffect(() => {
+    openUpload();
+    router.replace("/home");
+  }, []);
+  return null;
 }
-
-export default VideoUpload

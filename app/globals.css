@@ -1,8 +1,66 @@
-@import "tailwindcss";
-@plugin "daisyui" {
-  themes: all;
+@import 'tailwindcss';
+@plugin "daisyui";
+
+:root {
+  --lumina-black: #0a0a0a;
+  --lumina-white: #ffffff;
+  --lumina-gray: #888888;
+  --lumina-glass: rgba(255, 255, 255, 0.1);
+  --lumina-glass-dark: rgba(0, 0, 0, 0.4);
 }
-@plugin "daisyui/theme" {
-  name: "black";
-  default: true;
+
+@theme {
+  --color-lumina-black: var(--lumina-black);
+  --color-lumina-white: var(--lumina-white);
+  --color-lumina-gray: var(--lumina-gray);
+
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+/* Glassmorphism Utilities */
+@utility glass-panel {
+  @apply backdrop-blur-md border border-white/10 bg-white/5;
+}
+
+@utility glass-panel-dark {
+  @apply backdrop-blur-md border border-white/5 bg-black/40;
+}
+
+@utility glass-button {
+  @apply backdrop-blur-sm border border-white/20 bg-white/10 hover:bg-white/20 transition-all duration-300;
+}
+
+body {
+  @apply bg-lumina-black text-lumina-white antialiased;
+}
+
+/* Scroll Animation */
+@keyframes scroll-x {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-scroll-x {
+  animation: scroll-x 40s linear infinite;
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
 }

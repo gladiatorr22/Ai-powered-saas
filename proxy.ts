@@ -18,8 +18,18 @@ export default clerkMiddleware(async (auth, req) => {
   const isHomePage = currentUrl.pathname === "/home"
   const isApiRequest = currentUrl.pathname.startsWith("/api")
 
-  if (userId && isPublicRoute(req) && !isHomePage) {
+  const isAuthRoute = createRouteMatcher([
+    "/sign-in(.*)",
+    "/sign-up(.*)",
+  ]);
+
+  if (userId && isAuthRoute(req)) {
     return NextResponse.redirect(new URL("/home", req.url))
+  }
+
+  // Allow API routes to handle their own authentication (return JSON errors, not HTML redirects)
+  if (isApiRequest) {
+    return NextResponse.next()
   }
 
   if (!userId && !isPublicRoute(req) && !isPublicApiRoute(req)) {
